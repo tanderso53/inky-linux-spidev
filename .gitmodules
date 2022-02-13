@@ -1,0 +1,3 @@
+[submodule "lib/pimoroni-inky-driver"]
+	path = lib/pimoroni-inky-driver
+	url = https://www.thecrib.dev/driver-development/pimoroni-inky-driver.git
