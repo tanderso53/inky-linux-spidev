@@ -1,7 +1,35 @@
 cmake_minimum_required(VERSION 3.21)
 
+find_package(Git)
+
+if(Git_FOUND)
+
+  execute_process(COMMAND ${GIT_EXECUTABLE} describe
+    OUTPUT_VARIABLE INKY_VERSION
+    RESULT_VARIABLE INKY_VERSION_RESULT
+    ERROR_QUIET)
+
+  if(NOT (INKY_VERSION_RESULT EQUAL 0))
+
+    set(INKY_VERSION 1.0.0)
+
+  endif()
+
+  string(REGEX REPLACE "^v([0-9]\\.[0-9]\\.[0-9]).*$" "\\1"
+    INKY_VERSION ${INKY_VERSION})
+
+elseif(EXISTS ${CMAKE_CURRENT_LIST_DIR}/VERSION)
+
+  file(READ ${CMAKE_CURRENT_LIST_DIR}/VERSION INKY_VERSION)
+
+else()
+
+  set(INKY_VERSION 1.0.0 LANGUAGES C)
+
+endif()
+
 project(inkyuserspace
-  VERSION 1.0.0)
+  VERSION ${INKY_VERSION})
 
 include(GNUInstallDirs)
 
