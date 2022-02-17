@@ -77,11 +77,18 @@ if(INKY_BUILD_DOCS)
     ${PROJECT_SOURCE_DIR}
     COMMENT "Generate API documentation")
 
+  # Install docs
+
+  install(DIRECTORY ${DOXYGEN_OUTPUT_DIRECTORY}/html/
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}/html)
+
 endif()
 
 ########################
 # LIBRARY INSTALLATION #
 ########################
+
+# Install header filies
 
 install(TARGETS inkyuserspace-static
   PUBLIC_HEADER
@@ -92,3 +99,9 @@ install(TARGETS inkyuserspace-static
 
 install(TARGETS inkyuserspace-shared
   LIBRARY)
+
+install(TARGETS pimoroni-inky-driver
+  PUBLIC_HEADER
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${CMAKE_PROJECT_NAME}
+  PRIVATE_HEADER
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${CMAKE_PROJECT_NAME})
