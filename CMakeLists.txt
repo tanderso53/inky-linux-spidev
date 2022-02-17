@@ -13,7 +13,7 @@ add_subdirectory(lib/pimoroni-inky-driver)
 
 if(NOT DEFINED INKY_BUILD_DOCS)
 
-  set(INKY_BUILD_DOCS false)
+  set(INKY_BUILD_DOCS true)
 
 endif()
 
@@ -88,6 +88,10 @@ if(INKY_BUILD_DOCS AND DOXYGEN_FOUND)
 
     set(DOXYGEN_GENERATE_LATEX YES)
 
+  else()
+
+    message(NOTICE "PDF Documentation will not be build")
+
   endif()
 
   doxygen_add_docs(builddocs ALL
@@ -118,6 +122,10 @@ if(INKY_BUILD_DOCS AND DOXYGEN_FOUND)
       TYPE DOC)
 
   endif()
+
+else()
+
+  message(NOTICE "Documentation will not be build")
 
 endif()
 

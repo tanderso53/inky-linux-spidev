@@ -27,10 +27,13 @@ the source root. Then enter the following commands:
 
 ``` bash
 # Build with docs (Requires Doxygen)
-cmake -DINKY_BUILD_DOCS=true -S . -B build
+cmake -S . -B build
 
 # OR Build without docs
-#cmake -S . -B build
+#cmake -DINKY_BUILD_DOCS=false -S . -B build
+
+# OR Build docs without PDF (PDF requires LaTeX)
+#cmake -DINKY_BUILD_DOCS_PDF=true
 
 # Install library
 cmake --install build
