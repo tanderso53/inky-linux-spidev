@@ -7,7 +7,14 @@
 
 #include <stdint.h>
 
+/**
+ * @defgroup inkyspidevapi Inky Linux Userspace API
+ * @{
+ */
+
 #define INKY_SPIDEV_CONSUMER "inky-spidev"
+#define INKY_SPIDEV_SPEED 800000
+#define INKY_SPIDEV_SPECIAL_LEN 64
 
 /** @brief interface object for inky-spidev driver
  *
@@ -15,16 +22,17 @@
  * interface.
  */
 typedef struct {
-	char special[64];
+	char special[INKY_SPIDEV_SPECIAL_LEN];
 	int fd;
 	inky_config dev;
 	struct gpiod_chip *gpio_chip;
 	struct gpiod_line *gpio_reset;
 	struct gpiod_line *gpio_busy;
 	struct gpiod_line *gpio_dc;
+	inky_color_config color_cfg;
 } inky_spidev_intf;
 
-/** @defgroup GPIO function user callbacks
+/** @defgroup inkyspidevgpiocb GPIO function user callbacks
  * @{
  */
 
@@ -45,7 +53,7 @@ inky_error_state inky_spidev_gpio_poll_pin(inky_pin, uint16_t,
  * @}
  */
 
-/** @defgroup SPI function callbacks
+/** @defgroup inkyspidevspicb SPI function callbacks
  * @{
  */
 
@@ -54,16 +62,16 @@ inky_error_state inky_spidev_spi_setup(void *intf_ptr);
 /* Typical kernel callbacks */
 inky_error_state inky_spidev_delay(uint32_t delay_us, void *intf_ptr);
 
-/** @brief inky_spidev_spi_write
+/** @brief User callback to write byte to SPI
  *  @param buf ptr to buffer to write
  *  @param len length of buffer to write
  */
 inky_error_state inky_spidev_spi_write(const uint8_t* buf, uint32_t len,
 				       void *intf_ptr);
 
-/** @brief inky_spidev_spi_write_16
- *  @param UINT16_t buf: ptr to buffer to write
- *  @param UINT32_t len: length of buffer to write
+/** @brief User callback to write 16bit word to SPI
+ *  @param buf Ptr to buffer to write
+ *  @param len Length of buffer to write
  */
 inky_error_state inky_spidev_spi_write_16(uint16_t* buf, uint32_t len,
 					  void *intf_ptr);
@@ -72,12 +80,34 @@ inky_error_state inky_spidev_spi_write_16(uint16_t* buf, uint32_t len,
  * @}
  */
 
-/** @brief Initialize Inky with spidev userspace library
- *  @param special path to spi special file (ex: /dev/spidev1.1)
+/**
+ * @defgroup inkyspidevinit Userspace initialization functions
+ * @{
  */
 
-int8_t inky_spidev_init(inky_spidev_intf *intf_ptr);
+/** @brief Initialize Inky with spidev userspace library
+ *  @param intf_ptr Interface driver device pointer
+ *  @param spidev Path to spi special file, ex: /dev/spidev1.1
+ *  @param gpiochip Device path or description of gpio chip device
+ *  @param reset_offset GPIO line offset for reset pin
+ *  @param busy_offset GPIO line offset for busy pin
+ *  @param dc_offset GPIO line offset for dc_offset
+ */
+int8_t inky_spidev_init(inky_spidev_intf *intf_ptr, const char* spidev,
+			const char* gpiochip, unsigned int reset_offset,
+			unsigned int busy_offset, unsigned int dc_offset);
 
+/** @brief Deinitialize and return resources to GPIO and SPI devices
+ *  @param intf_ptr Device interface pointer
+ */
 int8_t inky_spidev_deinit(inky_spidev_intf *intf_ptr);
+
+/**
+ * @}
+ */
+
+/**
+ * @}
+ */
 
 #endif /* #ifndef INKY_SPIDEV_H */

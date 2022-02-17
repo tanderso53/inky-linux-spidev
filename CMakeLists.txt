@@ -7,31 +7,26 @@ include(GNUInstallDirs)
 
 add_subdirectory(lib/pimoroni-inky-driver)
 
-string(CONCAT LIB_STATIC_TGT
-  ${PROJECT_NAME} "-static")
-string(CONCAT LIB_SHARED_TGT
-  ${PROJECT_NAME} "-shared")
-
-string(CONCAT LIB_STATIC_OUTPUT
-  ${CMAKE_STATIC_LIBRARY_PREFIX}
-  ${PROJECT_NAME}
-  ${CMAKE_STATIC_LIBRARY_SUFFIX})
-
-string(CONCAT LIB_SHARED_OUTPUT
-  ${CMAKE_SHARED_LIBRARY_PREFIX}
-  ${PROJECT_NAME}
-  ${CMAKE_SHARED_LIBRARY_SUFFIX})
-
 ##########################
 # DOCUMENTATION OVERIDES #
 ##########################
 
-set(INKY_BUILD_DOCS false)
+if(NOT DEFINED INKY_BUILD_DOCS)
+
+  set(INKY_BUILD_DOCS false)
+
+endif()
 
 set(DOXYGEN_GENERATE_LATEX YES)
 
 set(DOXYGEN_OUTPUT_DIRECTORY
   ${CMAKE_CURRENT_BINARY_DIR}/doc)
+
+set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
+
+set(DOXYGEN_GENERATE_TREEVIEW YES)
+
+set(DOXYGEN_FULL_SIDEBAR YES)
 
 #######################################
 # INKY LINUX SPIDEV LIBRARY INTERFACE #
@@ -42,7 +37,7 @@ set(DOXYGEN_OUTPUT_DIRECTORY
 add_library(inkyuserspace-static STATIC)
 
 target_sources(inkyuserspace-static PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/inky-spidev.c)
+  ${CMAKE_CURRENT_LIST_DIR}/src/inky-spidev.c)
 
 target_include_directories(inkyuserspace-static PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}/include)
@@ -51,14 +46,15 @@ target_link_libraries(inkyuserspace-static PUBLIC
   pimoroni-inky-driver)
 
 set_target_properties(inkyuserspace-static PROPERTIES
-  PUBLIC_HEADER ${CMAKE_CURRENT_LIST_DIR}/include/inky-spidev.h)
+  PUBLIC_HEADER ${CMAKE_CURRENT_LIST_DIR}/include/inky-spidev.h
+  OUTPUT_NAME ${PROJECT_NAME})
 
 # Build Dynamic Library
 
 add_library(inkyuserspace-shared SHARED)
 
 target_sources(inkyuserspace-shared PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/inky-spidev.c)
+  ${CMAKE_CURRENT_LIST_DIR}/src/inky-spidev.c)
 
 target_include_directories(inkyuserspace-shared PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}/include)
@@ -66,15 +62,18 @@ target_include_directories(inkyuserspace-shared PUBLIC
 target_link_libraries(inkyuserspace-shared PUBLIC
   pimoroni-inky-driver)
 
+set_target_properties(inkyuserspace-shared PROPERTIES
+  OUTPUT_NAME ${PROJECT_NAME})
+
 # Generate documentation if doxygen was found
 
-find_package(Doxygen
-  REQUIRED dot
-  OPTIONAL_COMPONENTS mscgen dia)
+if(INKY_BUILD_DOCS)
 
-if(DOXYGEN_FOUND AND INKY_BUILD_DOCS)
+  find_package(Doxygen
+    REQUIRED dot
+    OPTIONAL_COMPONENTS mscgen dia)
 
-  doxygen_add_docs(doxygen
+  doxygen_add_docs(builddocs ALL
     ${PROJECT_SOURCE_DIR}
     COMMENT "Generate API documentation")
 

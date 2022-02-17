@@ -1,5 +1,6 @@
 #include <inky-spidev.h>
 
+#include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -7,7 +8,7 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 
-static gpiod_line *get_line_struct(inky_spidev_intf *intf_ptr,
+static struct gpiod_line *get_line_struct(inky_spidev_intf *intf_ptr,
 				   inky_pin gpin);
 
 /*
@@ -28,7 +29,7 @@ inky_error_state inky_spidev_gpio_setup_pin(inky_pin gpin,
 					    void *intf_ptr)
 {
 	int rst;
-	struct gpio_line *this_line;
+	struct gpiod_line *this_line;
 	struct gpiod_line_request_config cfg;
 	int pinstate;
 	inky_spidev_intf *iptr = (inky_spidev_intf*) intf_ptr;
@@ -36,21 +37,21 @@ inky_error_state inky_spidev_gpio_setup_pin(inky_pin gpin,
 	/* zero out line request struct */
 	cfg.consumer = INKY_SPIDEV_CONSUMER;
 	cfg.request_type = 0;
-	cfg.flags = 0; /* TODO: GPIOD_LINE_REQUEST_FLAG_ACTIVE_LOW? */
+	cfg.flags = 0; /** @todo GPIOD_LINE_REQUEST_FLAG_ACTIVE_LOW? */
 
 	/* Select appropriate pin config
-	 *
-	 * TODO: Create helper function for this?
+	 */
+	/** @todo Create helper function for this?
 	 */
 	switch (gpin) {
-	INKY_PIN_RESET:
+	case INKY_PIN_RESET:
 		this_line = iptr->gpio_reset;
 		break;
-	INKY_PIN_BUSY:
+	case INKY_PIN_BUSY:
 		this_line = iptr->gpio_busy;
 		break;
-	INKY_PIN_CD:
-		this_line = iptr->gpio_cd;
+	case INKY_PIN_DC:
+		this_line = iptr->gpio_dc;
 		break;
 	default:
 		return INKY_E_NOT_CONFIGURED;
@@ -59,24 +60,24 @@ inky_error_state inky_spidev_gpio_setup_pin(inky_pin gpin,
 
 	/* Select direction */
 	switch (gdir) {
-	INKY_DIR_IN:
-		cfg->request_type = GPIOD_LINE_REQUEST_DIRECTION_INPUT;
+	case INKY_DIR_IN:
+		cfg.request_type = GPIOD_LINE_REQUEST_DIRECTION_INPUT;
 		break;
-	INKY_DIR_OUT:
-		cfg->request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
+	case INKY_DIR_OUT:
+		cfg.request_type = GPIOD_LINE_REQUEST_DIRECTION_OUTPUT;
 		break;
 	}
 
 	/* Select any extra required flags */
 	switch (gcfg) {
-	INKY_PINCFG_OFF:
-		cfg->flags = cfg->flags | GPIOD_LINE_REQUEST_FLAG_BIAS_DISABLE;
+	case INKY_PINCFG_OFF:
+		cfg.flags = cfg.flags | GPIOD_LINE_REQUEST_FLAG_BIAS_DISABLE;
 		break;
-	INKY_PINCFG_PULLUP:
-		cfg->flags = cfg->flags | GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP;
+	case INKY_PINCFG_PULLUP:
+		cfg.flags = cfg.flags | GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP;
 		break;
-	INKY_PINCFG_PULLDOWN:
-		cfg->flags = cfg->flags | GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_DOWN;
+	case INKY_PINCFG_PULLDOWN:
+		cfg.flags = cfg.flags | GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_DOWN;
 		break;
 	}
 
@@ -102,7 +103,7 @@ inky_error_state inky_spidev_gpio_output_state(inky_pin gpin,
 					       void *intf_ptr)
 {
 	int rst;
-	struct gpio_line *this_line;
+	struct gpiod_line *this_line;
 	int pinstate;
 	inky_spidev_intf *iptr = (inky_spidev_intf*) intf_ptr;
 	
@@ -128,7 +129,7 @@ inky_error_state inky_spidev_gpio_input_state(inky_pin gpin,
 					      void *intf_ptr)
 {
 	int rst;
-	struct gpio_line *this_line;
+	struct gpiod_line *this_line;
 	inky_spidev_intf *iptr = (inky_spidev_intf*) intf_ptr;
 
 	if (!out) {
@@ -137,7 +138,7 @@ inky_error_state inky_spidev_gpio_input_state(inky_pin gpin,
 
 	this_line = get_line_struct(iptr, gpin);
 
-	rst = gpio_line_get_value(this_line);
+	rst = gpiod_line_get_value(this_line);
 
 	if (rst < 0) {
 		return INKY_E_FAILURE;
@@ -159,10 +160,13 @@ inky_error_state inky_spidev_gpio_poll_pin(inky_pin gpin,
 {
 	int rst = 0;
 	inky_pin_state pinstate;
-	struct gpio_line *this_line;
+	struct gpiod_line *this_line;
 	inky_spidev_intf *iptr = (inky_spidev_intf*) intf_ptr;
+	struct timespec timeoutspec = { 0 };
 
-	rst = iptr->dev->gpio_input_cb(gpin, &pinstate, intf_ptr);
+	rst = iptr->dev.gpio_input_cb(gpin, &pinstate, intf_ptr);
+
+	timeoutspec.tv_nsec = timeout * 1000;
 
 	if (rst < 0) {
 		return INKY_E_FAILURE;
@@ -187,7 +191,7 @@ inky_error_state inky_spidev_gpio_poll_pin(inky_pin gpin,
 	}
 
 	/* Wait for line to go high */
-	rst = gpiod_line_event_wait(this_line, timeout);
+	rst = gpiod_line_event_wait(this_line, &timeoutspec);
 
 	if (rst < 0) {
 		return INKY_E_FAILURE;
@@ -205,7 +209,7 @@ inky_error_state inky_spidev_spi_setup(void *intf_ptr)
 	int err;
 	uint8_t mode = SPI_MODE_0;
 	uint8_t bits = INKY_SPI_BITS_DEFAULT;
-	uint8_t speed = INKY_SPI_SPEED_HZ_MAX;
+	uint32_t speed = INKY_SPI_SPEED_HZ_MAX;
 	inky_spidev_intf *iptr = (inky_spidev_intf*) intf_ptr;
 
 	iptr->fd = open(iptr->special, O_RDWR);
@@ -215,20 +219,22 @@ inky_error_state inky_spidev_spi_setup(void *intf_ptr)
 			INKY_E_COMM_FAILURE;
 	}
 
-	err = ioctl(fd, SPI_IOC_WR_MODE, &mode);
+	err = ioctl(iptr->fd, SPI_IOC_WR_MODE, &mode);
 	if (err == -1) {
 		return INKY_E_COMM_FAILURE;
 	}
 
-	err = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
+	err = ioctl(iptr->fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
 	if (err == -1) {
 		return INKY_E_COMM_FAILURE;
 	}
 
-	err = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
+	err = ioctl(iptr->fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
 	if (err == -1) {
 		return INKY_E_COMM_FAILURE;
 	}
+
+	return INKY_OK;
 }
 
 inky_error_state inky_spidev_delay(uint32_t delay_us, void *intf_ptr)
@@ -253,7 +259,7 @@ inky_error_state inky_spidev_spi_write(const uint8_t* buf, uint32_t len,
 	struct spi_ioc_transfer tr = {
 		.tx_buf = (unsigned long) buf,
 		.rx_buf = 0,
-		.len = len
+		.len = len,
 		.delay_usecs = 0,
 		.speed_hz = INKY_SPIDEV_SPEED,
 		.bits_per_word = 8
@@ -267,7 +273,8 @@ inky_error_state inky_spidev_spi_write(const uint8_t* buf, uint32_t len,
 	return INKY_OK;
 }
 
-inky_error_state inky_spidev_spi_write16(const uint16_t* buf, uint32_t len)
+inky_error_state inky_spidev_spi_write16(const uint16_t* buf, uint32_t len,
+					 void *intf_ptr)
 {
 	int rst;
 	inky_spidev_intf *iptr = (inky_spidev_intf*) intf_ptr;
@@ -275,7 +282,7 @@ inky_error_state inky_spidev_spi_write16(const uint16_t* buf, uint32_t len)
 	struct spi_ioc_transfer tr = {
 		.tx_buf = (unsigned long) buf,
 		.rx_buf = 0,
-		.len = len
+		.len = len,
 		.delay_usecs = 0,
 		.speed_hz = INKY_SPIDEV_SPEED,
 		.bits_per_word = 16
@@ -293,6 +300,9 @@ int8_t inky_spidev_init(inky_spidev_intf *intf_ptr, const char* spidev,
 			const char* gpiochip, unsigned int reset_offset,
 			unsigned int busy_offset, unsigned int dc_offset)
 {
+	inky_config *dev = &intf_ptr->dev;
+
+	/* Point the gpio pins to the correct pointers */
 	intf_ptr->gpio_chip = gpiod_chip_open_lookup(gpiochip);
 	intf_ptr->gpio_reset = gpiod_chip_get_line(intf_ptr->gpio_chip,
 						   reset_offset);
@@ -305,6 +315,37 @@ int8_t inky_spidev_init(inky_spidev_intf *intf_ptr, const char* spidev,
 	    || !intf_ptr->gpio_busy || !intf_ptr->gpio_dc) {
 		return -1;
 	}
+
+	/* assign the provided spi device */
+	strncpy(intf_ptr->special, spidev, INKY_SPIDEV_SPECIAL_LEN - 1);
+	intf_ptr->fd = 0;
+
+	/* Fill out the inky device structure callbacks */
+	dev->gpio_init_cb = inky_spidev_gpio_initialize;
+	dev->gpio_setup_pin_cb = inky_spidev_gpio_setup_pin;
+	dev->gpio_output_cb = inky_spidev_gpio_output_state;
+	dev->gpio_input_cb = inky_spidev_gpio_input_state;
+	dev->gpio_poll_cb = inky_spidev_gpio_poll_pin;
+	dev->spi_setup_cb = inky_spidev_spi_setup;
+	dev->spi_write_cb = inky_spidev_spi_write;
+	dev->spi_write16_cb = inky_spidev_spi_write16;
+	dev->delay_us_cb = inky_spidev_delay;
+
+	/* Assign user pointers */
+	dev->intf_ptr = (void*) intf_ptr;
+	dev->usrptr1 = NULL;
+	dev->usrptr2 = NULL;
+
+	/* Set up Inky What Red settings */
+	dev->pdt = INKY_WHAT;
+	dev->fb = NULL;
+	dev->active_fb = NULL;
+	dev->exclude_flags = 0;
+	intf_ptr->color_cfg.white = 1;
+	intf_ptr->color_cfg.black = 1;
+	intf_ptr->color_cfg.red = 1;
+	intf_ptr->color_cfg.yellow = 0;
+	dev->color = &intf_ptr->color_cfg;
 
 	return 0;
 }
@@ -322,21 +363,21 @@ int8_t inky_spidev_deinit(inky_spidev_intf *intf_ptr)
 **********************************************************************
 */
 
-static gpiod_line *get_line_struct(inky_spidev_intf *intf_ptr,
-				   inky_pin gpin)
+static struct gpiod_line *get_line_struct(inky_spidev_intf *intf_ptr,
+					  inky_pin gpin)
 {
-	gpiod_line *this_line;
+	struct gpiod_line *this_line;
 
 	/* Select appropriate pin config */
 	switch (gpin) {
-	INKY_PIN_RESET:
-		this_line = iptr->gpio_reset;
+	case INKY_PIN_RESET:
+		this_line = intf_ptr->gpio_reset;
 		break;
-	INKY_PIN_BUSY:
-		this_line = iptr->gpio_busy;
+	case INKY_PIN_BUSY:
+		this_line = intf_ptr->gpio_busy;
 		break;
-	INKY_PIN_CD:
-		this_line = iptr->gpio_cd;
+	case INKY_PIN_DC:
+		this_line = intf_ptr->gpio_dc;
 		break;
 	default:
 		this_line = NULL;
