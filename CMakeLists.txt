@@ -28,6 +28,9 @@ set(DOXYGEN_GENERATE_TREEVIEW YES)
 
 set(DOXYGEN_FULL_SIDEBAR YES)
 
+set(DOXYGEN_USE_MDFILE_AS_MAINPAGE
+  ${PROJECT_SOURCE_DIR}/README.md)
+
 #######################################
 # INKY LINUX SPIDEV LIBRARY INTERFACE #
 #######################################
