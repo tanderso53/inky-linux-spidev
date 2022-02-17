@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
 
+#########################
+# INITIAL PROJECT SETUP #
+#########################
+
+# Check version dynamically if available
+
 find_package(Git)
 
 if(Git_FOUND)
@@ -24,12 +30,15 @@ elseif(EXISTS ${CMAKE_CURRENT_LIST_DIR}/VERSION)
 
 else()
 
-  set(INKY_VERSION 1.0.0 LANGUAGES C)
+  set(INKY_VERSION 1.0.0)
 
 endif()
 
+# Define Project
+
 project(inkyuserspace
-  VERSION ${INKY_VERSION})
+  VERSION ${INKY_VERSION}
+  LANGUAGES C)
 
 include(GNUInstallDirs)
 
