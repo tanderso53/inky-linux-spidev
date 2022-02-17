@@ -17,8 +17,6 @@ if(NOT DEFINED INKY_BUILD_DOCS)
 
 endif()
 
-set(DOXYGEN_GENERATE_LATEX YES)
-
 set(DOXYGEN_OUTPUT_DIRECTORY
   ${CMAKE_CURRENT_BINARY_DIR}/doc)
 
@@ -68,13 +66,29 @@ target_link_libraries(inkyuserspace-shared PUBLIC
 set_target_properties(inkyuserspace-shared PROPERTIES
   OUTPUT_NAME ${PROJECT_NAME})
 
-# Generate documentation if doxygen was found
+#############################
+# LIBRARY API DOCUMENTATION #
+#############################
 
-if(INKY_BUILD_DOCS)
+find_package(Doxygen
+  REQUIRED dot
+  OPTIONAL_COMPONENTS mscgen dia)
 
-  find_package(Doxygen
-    REQUIRED dot
-    OPTIONAL_COMPONENTS mscgen dia)
+if(INKY_BUILD_DOCS AND DOXYGEN_FOUND)
+
+  find_package(LATEX COMPONENTS PDFLATEX MAKEINDEX)
+
+  if(NOT DEFINED INKY_BUILD_DOCS_PDF)
+
+    set(INKY_BUILD_DOCS_PDF true)
+
+  endif()
+
+  if(LATEX_FOUND AND INKY_BUILD_DOCS_PDF)
+
+    set(DOXYGEN_GENERATE_LATEX YES)
+
+  endif()
 
   doxygen_add_docs(builddocs ALL
     ${PROJECT_SOURCE_DIR}
@@ -84,6 +98,26 @@ if(INKY_BUILD_DOCS)
 
   install(DIRECTORY ${DOXYGEN_OUTPUT_DIRECTORY}/html/
     DESTINATION ${CMAKE_INSTALL_DOCDIR}/html)
+
+  # If LATEX available, build and install a PDF as well
+
+  if(LATEX_FOUND AND INKY_BUILD_DOCS_PDF)
+
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pdf
+      COMMAND make -C ${DOXYGEN_OUTPUT_DIRECTORY}/latex
+      LATEX_CMD=${PDFLATEX_COMPILER}
+      COMMAND cp ${DOXYGEN_OUTPUT_DIRECTORY}/latex/refman.pdf
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pdf
+      DEPENDS builddocs)
+
+    add_custom_target(builddocs-pdf ALL
+      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pdf
+      COMMENT "Building PDF Documentation")
+
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pdf
+      TYPE DOC)
+
+  endif()
 
 endif()
 
