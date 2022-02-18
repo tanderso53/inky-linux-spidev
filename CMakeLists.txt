@@ -81,7 +81,7 @@ target_include_directories(inkyuserspace-static PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}/include)
 
 target_link_libraries(inkyuserspace-static PUBLIC
-  pimoroni-inky-driver)
+  pimoroni-inky-driver gpiod)
 
 set_target_properties(inkyuserspace-static PROPERTIES
   PUBLIC_HEADER ${CMAKE_CURRENT_LIST_DIR}/include/inky-spidev.h
@@ -192,3 +192,21 @@ install(TARGETS pimoroni-inky-driver
 
 install(FILES LICENSE
   DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME})
+
+#########################
+# COMPILE EXAMPLE FILES #
+#########################
+
+if(NOT (DEFINED INKY_COMPILE_EXAMPLES))
+
+  set (INKY_COMPILE_EXAMPLES false)
+
+endif()
+
+if(INKY_COMPILE_EXAMPLES)
+
+  set(INKY_SPIDEV_AS_SUBMODULE true)
+
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/examples)
+
+endif()
