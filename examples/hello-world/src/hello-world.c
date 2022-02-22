@@ -15,6 +15,7 @@
 
 #include <unistd.h>
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -29,6 +30,19 @@ extern char *optarg;
 extern int optind, opterr, optopt;
 
 /* Application definitions */
+
+typedef struct {
+	const uint8_t *buf;
+	size_t index;
+	size_t len;
+	bool eof;
+} bytestream;
+
+void bytestream_init(bytestream *stream, const uint8_t *buf, size_t len);
+
+size_t bytestream_size(bytestream *stream);
+
+uint8_t bytestream_get_next(bytestream *stream);
 
 char spidev[APP_ARG_BUFFER]; /* Path to SPI special device */
 char gpiochip[APP_ARG_BUFFER]; /* Search string for gpio chip */
@@ -48,6 +62,36 @@ void error_handler(int8_t rst);
 void print_usage();
 
 /* Application Implementation */
+
+void bytestream_init(bytestream *stream, const uint8_t *buf, size_t len)
+{
+	stream->buf = buf;
+	stream->len = len;
+	stream->index = 0;
+	stream->eof = false;
+}
+
+size_t bytestream_size(bytestream *stream)
+{
+	return stream->len;
+}
+
+uint8_t bytestream_get_next(bytestream *stream)
+{
+	int ret;
+
+	if (stream->index < stream->len) {
+		ret = stream->buf[stream->index];
+		++stream->index;
+	} else {
+		ret = -1u;
+		stream->eof = true;
+	}
+
+	return ret;
+}
+
+uint8_t bytestream_get_next(bytestream *stream);
 
 bool check_numeric(const char *str)
 {
@@ -165,12 +209,46 @@ void print_usage() {
 		"-h		Display this usage message\n");
 }
 
+uint8_t write_monochrome_img(inky_config *dev, bytestream *img)
+{
+	const uint8_t th = 0x80; /* Color Threshold */
+	uint8_t rst;
+
+	for (size_t h = 0; h < dev->fb->height; ++h) {
+		for (uint8_t w = 0; w < dev->fb->width; ++w) {
+			uint8_t value;
+			inky_color c;
+
+			/* Check if bit is on or off, then select
+			 * black if on */
+			value = bytestream_get_next(img);
+
+			if (img->eof) {
+				c = INKY_COLOR_WHITE;
+			} else if (value < th) {
+				c =  INKY_COLOR_BLACK;
+			} else {
+				c = INKY_COLOR_WHITE;
+			}
+
+			/* Load changes into framebuffer */
+			rst = inky_fb_set_pixel(dev, w, h, c);
+			error_handler(rst);
+		}
+	}
+
+	return rst;
+}
+
 int main(int argc, char *const argv[])
 {
 	int rst;
 	inky_config *dev = &intf.dev;
+	bytestream img;
 
 	parse_options(argc, argv);
+
+	bytestream_init(&img, hello_world, ARRAY_LEN(hello_world));
 
 	/* Initialize the interface */
 	rst = inky_spidev_init(&intf, spidev, gpiochip, reset_pin,
@@ -191,31 +269,7 @@ int main(int argc, char *const argv[])
 	error_handler(rst);
 
 	/* Write monochrome image to display */
-	for (uint16_t i = 0; i < ARRAY_LEN(hello_world) || i < dev->fb->bytes; ++i) {
-		for (uint8_t j = 0; i < 8; ++i) {
-			uint32_t k;
-			uint16_t y;
-			uint16_t x;
-			uint8_t value;
-			inky_color c;
-
-			/* Calculate the bit we are working on */
-			k = j + 8 * i;
-
-			/* Turn bit address to XY address */
-			y = k / dev->fb->width;
-			x = k % dev->fb->width;
-
-			/* Check if bit is on or off, then select
-			 * black if on */
-			value = (hello_world[k] >> j) & 0x01;
-			c = value ? INKY_COLOR_BLACK : INKY_COLOR_WHITE;
-
-			/* Load changes into framebuffer */
-			rst = inky_fb_set_pixel(dev, x, y, c);
-			error_handler(rst);
-		}
-	}
+	write_monochrome_img(dev, &img);
 
 	/* Must call the update function or the image won't be
 	 * displayed */
