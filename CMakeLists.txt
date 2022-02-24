@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.18)
 
 #########################
 # INITIAL PROJECT SETUP #
@@ -197,13 +197,13 @@ install(FILES LICENSE
 # COMPILE EXAMPLE FILES #
 #########################
 
-if(NOT (DEFINED INKY_COMPILE_EXAMPLES))
+if(NOT (DEFINED INKY_BUILD_EXAMPLES))
 
-  set (INKY_COMPILE_EXAMPLES false)
+  set (INKY_BUILD_EXAMPLES false)
 
 endif()
 
-if(INKY_COMPILE_EXAMPLES)
+if(INKY_BUILD_EXAMPLES)
 
   set(INKY_SPIDEV_AS_SUBMODULE true)
 

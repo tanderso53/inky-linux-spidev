@@ -155,51 +155,37 @@ inky_error_state inky_spidev_gpio_input_state(inky_pin gpin,
 }
 
 inky_error_state inky_spidev_gpio_poll_pin(inky_pin gpin,
-					   uint16_t timeout,
+					   uint64_t timeout,
 					   void *intf_ptr)
 {
 	int rst = 0;
 	inky_pin_state pinstate;
 	struct gpiod_line *this_line;
 	inky_spidev_intf *iptr = (inky_spidev_intf*) intf_ptr;
-	struct timespec timeoutspec = { 0 };
+	struct timespec tm_start;
 
-	rst = iptr->dev.gpio_input_cb(gpin, &pinstate, intf_ptr);
+	timespec_get(&tm_start , TIME_UTC);
 
-	timeoutspec.tv_nsec = timeout * 1000;
+	do {
+		struct timespec tm_now;
 
-	if (rst < 0) {
-		return INKY_E_FAILURE;
-	}
+		rst = iptr->dev.gpio_input_cb(gpin, &pinstate, intf_ptr);
 
-	/* Return early if pin is not set */
-	if (pinstate == INKY_PINSTATE_HIGH) {
-		return INKY_OK;
-	}
+		if (rst < 0) {
+			return INKY_E_FAILURE;
+		}
 
-	this_line = get_line_struct(iptr, gpin);
+		/* Get new time for timeout */
+		timespec_get(&tm_now, TIME_UTC);
 
-	if (!this_line) {
-		return INKY_E_NULL_PTR;
-	}
+		/* Return early if timeout */
+		if (tm_now.tv_sec * 1000000 + tm_now.tv_nsec / 1000
+		    > tm_start.tv_sec * 1000000 + tm_start.tv_nsec / 1000 + timeout) {
+			return INKY_E_TIMEOUT;
+		}
 
-	rst = gpiod_line_request_rising_edge_events(this_line,
-						    "INKY_BUSY_WAIT");
-
-	if (rst < 0) {
-		return INKY_E_NOT_AVAILABLE;
-	}
-
-	/* Wait for line to go high */
-	rst = gpiod_line_event_wait(this_line, &timeoutspec);
-
-	if (rst < 0) {
-		return INKY_E_FAILURE;
-	}
-
-	if (rst == 0) {
-		return INKY_E_TIMEOUT;
-	}
+		iptr->dev.delay_us_cb(5000, intf_ptr);
+	} while (pinstate != INKY_PINSTATE_LOW);
 
 	return INKY_OK;
 }
@@ -261,7 +247,7 @@ inky_error_state inky_spidev_spi_write(const uint8_t* buf, uint32_t len,
 		.rx_buf = 0,
 		.len = len,
 		.delay_usecs = 0,
-		.speed_hz = INKY_SPIDEV_SPEED,
+		.speed_hz = INKY_SPI_SPEED_HZ_MAX,
 		.bits_per_word = 8
 	};
 
@@ -283,8 +269,8 @@ inky_error_state inky_spidev_spi_write16(const uint16_t* buf, uint32_t len,
 		.tx_buf = (unsigned long) buf,
 		.rx_buf = 0,
 		.len = len,
-		.delay_usecs = 0,
-		.speed_hz = INKY_SPIDEV_SPEED,
+		.delay_usecs = 5,
+		.speed_hz = INKY_SPI_SPEED_HZ_MAX,
 		.bits_per_word = 16
 	};
 

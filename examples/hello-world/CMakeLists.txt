@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.18)
 
 project(inky-hello-world
   VERSION 1.0.0
@@ -9,6 +9,8 @@ add_executable(inky-hello-world
 
 target_link_libraries(inky-hello-world PRIVATE
   inkyuserspace-static)
+
+#target_compile_options(inky-hello-world PRIVATE -Wall -g)
 
 if(DEFINED INKY_SPIDEV_AS_SUBMODULE)
 

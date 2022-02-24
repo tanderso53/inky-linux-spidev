@@ -215,7 +215,7 @@ uint8_t write_monochrome_img(inky_config *dev, bytestream *img)
 	uint8_t rst;
 
 	for (size_t h = 0; h < dev->fb->height; ++h) {
-		for (uint8_t w = 0; w < dev->fb->width; ++w) {
+		for (size_t w = 0; w < dev->fb->width; ++w) {
 			uint8_t value;
 			inky_color c;
 

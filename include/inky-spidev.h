@@ -46,7 +46,7 @@ inky_error_state inky_spidev_gpio_output_state(inky_pin, inky_pin_state,
 					     void *intf_ptr);
 inky_error_state inky_spidev_gpio_input_state(inky_pin, inky_pin_state*,
 					      void *intf_ptr);
-inky_error_state inky_spidev_gpio_poll_pin(inky_pin, uint16_t,
+inky_error_state inky_spidev_gpio_poll_pin(inky_pin, uint64_t,
 					   void *intf_ptr);
 
 /**
