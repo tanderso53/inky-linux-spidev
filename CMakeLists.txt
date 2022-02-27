@@ -66,6 +66,13 @@ set(DOXYGEN_FULL_SIDEBAR YES)
 set(DOXYGEN_USE_MDFILE_AS_MAINPAGE
   ${PROJECT_SOURCE_DIR}/README.md)
 
+set(DOXYGEN_HTML_EXTRA_STYLESHEET
+  ${CMAKE_CURRENT_LIST_DIR}/doc/doxygen-awesome-css/doxygen-awesome.css)
+
+set(DOXYGEN_EXCLUDE_PATTERNS
+  */doxygen-awesome-css/*
+  */munit/*)
+
 #######################################
 # INKY LINUX SPIDEV LIBRARY INTERFACE #
 #######################################
