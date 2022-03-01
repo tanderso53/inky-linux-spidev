@@ -1,3 +1,6 @@
 [submodule "lib/pimoroni-inky-driver"]
 	path = lib/pimoroni-inky-driver
 	url = https://www.thecrib.dev/driver-development/pimoroni-inky-driver.git
+[submodule "doc/doxygen-awesome-css"]
+	path = doc/doxygen-awesome-css
+	url = https://github.com/jothepro/doxygen-awesome-css.git
