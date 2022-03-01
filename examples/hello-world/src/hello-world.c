@@ -23,6 +23,10 @@
 
 #define APP_ARG_BUFFER 32
 
+/* Application flags */
+#define APP_FLAG_CLEAR 0x0001 /* Reset the display */
+#define APP_FLAG_NO_WRITE 0x0002 /* Don't write the hello world img */
+
 #define ARRAY_LEN(array) sizeof(array)/sizeof(array[0])
 
 /* For getopts */
@@ -50,6 +54,8 @@ char gpiochip[APP_ARG_BUFFER]; /* Search string for gpio chip */
 uint8_t reset_pin; /* Offset for reset gpio line */
 uint8_t busy_pin; /* Offset for busy gpio line */
 uint8_t dc_pin; /* Offset for DC gpio line */
+
+uint16_t app_flags = 0; /* Additional app control flags */
 
 inky_spidev_intf intf; /* Interface configuration */
 
@@ -123,7 +129,7 @@ int parse_options(int argc, char *const argv[])
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "r:b:d:s:g:h")) != -1) {
+	while ((opt = getopt(argc, argv, "r:b:d:s:g:cnh")) != -1) {
 		switch (opt) {
 		case 'r':
 			if (!check_numeric(optarg)) {
@@ -162,6 +168,16 @@ int parse_options(int argc, char *const argv[])
 
 		case 'g':
 			strncpy(gpiochip, optarg, APP_ARG_BUFFER -1);
+
+			break;
+
+		case 'c':
+			app_flags = app_flags | APP_FLAG_CLEAR;
+
+			break;
+
+		case 'n':
+			app_flags = app_flags | APP_FLAG_NO_WRITE;
 
 			break;
 
@@ -265,16 +281,20 @@ int main(int argc, char *const argv[])
 	rst = inky_setup(dev);
 	error_handler(rst);
 
-	rst = inky_clear(dev);
-	error_handler(rst);
+	if (app_flags & APP_FLAG_CLEAR) {
+		rst = inky_clear(dev);
+		error_handler(rst);
+	}
 
-	/* Write monochrome image to display */
-	write_monochrome_img(dev, &img);
+	if (! (app_flags & APP_FLAG_NO_WRITE)) {
+		/* Write monochrome image to display */
+		write_monochrome_img(dev, &img);
 
-	/* Must call the update function or the image won't be
-	 * displayed */
-	rst = inky_update(dev);
-	error_handler(rst);
+		/* Must call the update function or the image won't be
+		 * displayed */
+		rst = inky_update(dev);
+		error_handler(rst);
+	}
 
 	/* Reclaim memory from the framebuffer */
 	rst = inky_free(dev);
